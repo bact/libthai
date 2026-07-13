@@ -107,6 +107,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         case DLL_PROCESS_ATTACH:
             libthai_dll = hinstDLL;
             break;
+        case DLL_PROCESS_DETACH:
+            brk_free_shared_brk ();
+            break;
     }
     return TRUE;
 }
