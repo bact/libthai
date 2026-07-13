@@ -41,7 +41,7 @@
  * Returns a dynamically allocated string that must be free()d by the caller.
  * Returns NULL on failure.
  */
-char * libthai_get_installdir (void);
+char * th_get_win32_installdir (void);
 #endif
 
 #endif  /* __PRIV_UTILS_H */

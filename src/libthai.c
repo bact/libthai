@@ -112,7 +112,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 }
 
 char *
-libthai_get_installdir (void)
+th_get_win32_installdir (void)
 {
     wchar_t wc_fn[MAX_PATH];
     char *filename = NULL;

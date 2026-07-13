@@ -65,7 +65,7 @@ brk_load_default_dict ()
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {
 #if defined (_WIN32) && !defined (__CYGWIN__)
-        char *basedir = libthai_get_installdir ();
+        char *basedir = th_get_win32_installdir ();
         if (basedir) {
             const char *sharedir = "share\\libthai\\" DICT_NAME ".tri";
             size_t total_len = strlen (basedir) + strlen (sharedir) + 1; /* '+ 1' for '\\' */
