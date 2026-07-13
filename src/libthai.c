@@ -89,8 +89,86 @@
  */
 
 #include "thbrk/thbrk-priv.h"
+#include "utils/priv-utils.h"
 
-__attribute__ ((destructor)) void
+#if defined (_WIN32) && !defined (__CYGWIN__)
+#define WIN32_LEAN_AND_MEAN 1
+#include <windows.h>
+#include <stdlib.h>
+#include <string.h>
+
+static HMODULE libthai_dll = NULL;
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            libthai_dll = hinstDLL;
+            break;
+    }
+    return TRUE;
+}
+
+char *
+libthai_get_installdir (void)
+{
+    wchar_t wc_fn[MAX_PATH];
+    char *filename = NULL;
+    char *retval = NULL;
+    char *p;
+    int len;
+
+    if (!libthai_dll)
+        return NULL;
+
+    if (!GetModuleFileNameW (libthai_dll, wc_fn, MAX_PATH))
+        return NULL;
+
+    len = WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, NULL, 0, NULL, NULL);
+    if (len <= 0)
+        return NULL;
+
+    filename = (char *) malloc (len);
+    if (!filename)
+        return NULL;
+
+    WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, filename, len, NULL, NULL);
+
+    if ((p = strrchr (filename, '\\')) != NULL)
+        *p = '\0';
+
+    retval = (char *) malloc (strlen (filename) + 1);
+    if (retval)
+        strcpy (retval, filename);
+
+    do {
+        p = strrchr (retval, '\\');
+        if (p == NULL)
+            break;
+
+        *p = '\0';
+
+        if (_stricmp (p + 1, "bin") == 0 || _stricmp (p + 1, "lib") == 0)
+            break;
+    } while (p != NULL);
+
+    if (p == NULL) {
+        free (retval);
+        retval = filename;
+    } else {
+        free (filename);
+    }
+
+    return retval;
+}
+#endif /* _WIN32 && !__CYGWIN__ */
+
+#if defined (__GNUC__) || defined (__clang__)
+__attribute__ ((destructor))
+#endif
+void
 _libthai_on_unload ()
 {
     brk_free_shared_brk ();
