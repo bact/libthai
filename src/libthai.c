@@ -99,6 +99,8 @@
 
 static HMODULE libthai_dll = NULL;
 
+void _libthai_on_unload (void);
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -108,7 +110,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
             libthai_dll = hinstDLL;
             break;
         case DLL_PROCESS_DETACH:
-            brk_free_shared_brk ();
+            _libthai_on_unload ();
             break;
     }
     return TRUE;
