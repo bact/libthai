@@ -33,6 +33,77 @@
 #include "utils/priv-utils.h"
 #include "brk-common.h"
 
+#if defined (_WIN32) && !defined (__CYGWIN__)
+#define WIN32_LEAN_AND_MEAN 1
+#include <windows.h>
+#include <stdlib.h>
+#include <string.h>
+
+static HMODULE libthai_dll = NULL;
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            libthai_dll = hinstDLL;
+            break;
+    }
+    return TRUE;
+}
+
+static char *
+libthai_get_installdir (HMODULE hmodule)
+{
+    wchar_t wc_fn[MAX_PATH];
+    char *filename = NULL;
+    char *retval = NULL;
+    char *p;
+    int len;
+
+    if (!GetModuleFileNameW (hmodule, wc_fn, MAX_PATH))
+        return NULL;
+
+    len = WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, NULL, 0, NULL, NULL);
+    if (len <= 0)
+        return NULL;
+
+    filename = (char *) malloc (len);
+    if (!filename)
+        return NULL;
+
+    WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, filename, len, NULL, NULL);
+
+    if ((p = strrchr (filename, '\\')) != NULL)
+        *p = '\0';
+
+    retval = (char *) malloc (strlen (filename) + 1);
+    if (retval)
+        strcpy (retval, filename);
+
+    do {
+        p = strrchr (retval, '\\');
+        if (p == NULL)
+            break;
+
+        *p = '\0';
+
+        if (_stricmp (p + 1, "bin") == 0 || _stricmp (p + 1, "lib") == 0)
+            break;
+    } while (p != NULL);
+
+    if (p == NULL) {
+        free (retval);
+        retval = filename;
+    } else {
+        free (filename);
+    }
+
+    return retval;
+}
+#endif /* _WIN32 && !__CYGWIN__ */
+
 #define DICT_NAME   "thbrk"
 
 static char *
@@ -64,7 +135,22 @@ brk_load_default_dict ()
 
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {
+#if defined (_WIN32) && !defined (__CYGWIN__)
+        char *basedir = libthai_get_installdir (libthai_dll);
+        if (basedir) {
+            const char *sharedir = "share\\libthai\\" DICT_NAME ".tri";
+            size_t total_len = strlen (basedir) + strlen (sharedir) + 1; /* '+ 1' for '\\' */
+            char *filepath = (char *) malloc (total_len + 1);
+            if (filepath) {
+                sprintf (filepath, "%s\\%s", basedir, sharedir);
+                dict_trie = trie_new_from_file (filepath);
+                free (filepath);
+            }
+            free (basedir);
+        }
+#else
         dict_trie = trie_new_from_file (DICT_DIR "/" DICT_NAME ".tri");
+#endif
     }
 
     return dict_trie;

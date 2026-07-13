@@ -347,6 +347,7 @@ brk_get_shared_brk ()
 
     if (UNLIKELY (!brk_shared_brk && !is_tried)) {
         brk_shared_brk = th_brk_new (NULL);
+        is_tried = 1;
     }
 
     return brk_shared_brk;

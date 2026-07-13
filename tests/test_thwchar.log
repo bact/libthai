@@ -1,0 +1,8 @@
+Testing thwchar...
+Input:  tis-620-0 string of length 32: สวัสดีครับ นี่เป็นการทดสอบตัวเอง
+Output: Unicode string of length 32, wcslen = 32
+
+Convert back to tis-620-0 string...
+Output: tis-620-0 string of length 32, strlen = 32: สวัสดีครับ นี่เป็นการทดสอบตัวเอง
+ Input = output, correct! Test thwchar OK.
+PASS test_thwchar (exit status: 0)

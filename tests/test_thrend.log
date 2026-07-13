@@ -1,0 +1,7 @@
+Testing th_render_text_tis() w/o decomposing SARA AM
+Testing th_render_text_tis() decomposing SARA AM
+Testing th_render_text_win() w/o decomposing SARA AM
+Testing th_render_text_win() decomposing SARA AM
+Testing th_render_text_mac() w/o decomposing SARA AM
+Testing th_render_text_mac() decomposing SARA AM
+PASS test_thrend (exit status: 0)
