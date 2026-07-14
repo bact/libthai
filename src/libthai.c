@@ -95,7 +95,7 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #include <stdlib.h>
-#include <string.h>
+#include <wchar.h>
 
 static HMODULE libthai_dll = NULL;
 
@@ -116,57 +116,59 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     return TRUE;
 }
 
-char *
-th_get_win32_installdir (void)
+wchar_t *
+th_get_win32_installdir_w (void)
 {
-    wchar_t wc_fn[MAX_PATH];
-    char *filename = NULL;
-    char *retval = NULL;
-    char *p;
-    int len;
+    wchar_t *path;
+    wchar_t *seg_end, *found;
+    DWORD len;
 
     if (!libthai_dll)
         return NULL;
 
-    if (!GetModuleFileNameW (libthai_dll, wc_fn, MAX_PATH))
+    path = (wchar_t *) malloc (MAX_PATH * sizeof (wchar_t));
+    if (!path)
         return NULL;
 
-    len = WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, NULL, 0, NULL, NULL);
-    if (len <= 0)
+    len = GetModuleFileNameW (libthai_dll, path, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) {
+        free (path);
         return NULL;
-
-    filename = (char *) malloc (len);
-    if (!filename)
-        return NULL;
-
-    WideCharToMultiByte (CP_UTF8, 0, wc_fn, -1, filename, len, NULL, NULL);
-
-    if ((p = strrchr (filename, '\\')) != NULL)
-        *p = '\0';
-
-    retval = (char *) malloc (strlen (filename) + 1);
-    if (retval)
-        strcpy (retval, filename);
-
-    do {
-        p = strrchr (retval, '\\');
-        if (p == NULL)
-            break;
-
-        *p = '\0';
-
-        if (_stricmp (p + 1, "bin") == 0 || _stricmp (p + 1, "lib") == 0)
-            break;
-    } while (p != NULL);
-
-    if (p == NULL) {
-        free (retval);
-        retval = filename;
-    } else {
-        free (filename);
     }
 
-    return retval;
+    /* Directory of the DLL */
+    {
+        wchar_t *p = wcsrchr (path, L'\\');
+        if (p)
+            *p = L'\0';
+    }
+
+    /* Walk up to the nearest "bin"/"lib" ancestor;
+     * fall back to the DLL's own directory if none found. */
+    found = NULL;
+    seg_end = path + wcslen (path);
+    while (seg_end > path) {
+        wchar_t *seg_start = seg_end;
+        size_t seg_len;
+
+        while (seg_start > path && seg_start[-1] != L'\\')
+            seg_start--;
+
+        seg_len = (size_t) (seg_end - seg_start);
+        if (seg_start > path && seg_len == 3 &&
+            (_wcsnicmp (seg_start, L"bin", 3) == 0 ||
+             _wcsnicmp (seg_start, L"lib", 3) == 0)) {
+            found = seg_start - 1;
+            break;
+        }
+
+        seg_end = (seg_start > path) ? seg_start - 1 : path;
+    }
+
+    if (found)
+        *found = L'\0';
+
+    return path;
 }
 #endif /* _WIN32 && !__CYGWIN__ */
 

@@ -33,6 +33,13 @@
 #include "utils/priv-utils.h"
 #include "brk-common.h"
 
+#if defined (_WIN32) && !defined (__CYGWIN__)
+#include <wchar.h>
+/* turns a narrow string-literal macro into a wide one, e.g. WIDEN (DICT_NAME) */
+#define WIDEN_(s) L ## s
+#define WIDEN(s) WIDEN_(s)
+#endif
+
 #define DICT_NAME   "thbrk"
 
 static char *
@@ -65,18 +72,26 @@ brk_load_default_dict ()
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {
 #if defined (_WIN32) && !defined (__CYGWIN__)
-        char *basedir = th_get_win32_installdir ();
+        wchar_t *basedir = th_get_win32_installdir_w ();
         if (basedir) {
-            const char *sharedir = "share\\libthai\\" DICT_NAME ".tri";
-            size_t total_len = strlen (basedir) + strlen (sharedir) + 1; /* '+ 1' for '\\' */
-            char *filepath = (char *) malloc (total_len + 1);
+            static const wchar_t sharedir[] =
+                L"share\\libthai\\" WIDEN (DICT_NAME) L".tri";
+            size_t total_len = wcslen (basedir) + 1 /* '\\' */
+                              + (sizeof (sharedir) / sizeof (wchar_t));
+            wchar_t *filepath = (wchar_t *) malloc (total_len * sizeof (wchar_t));
             if (filepath) {
-                sprintf (filepath, "%s\\%s", basedir, sharedir);
-                dict_trie = trie_new_from_file (filepath);
+                swprintf (filepath, total_len, L"%ls\\%ls", basedir, sharedir);
+                FILE *f = _wfopen (filepath, L"rb");
+                if (f) {
+                    dict_trie = trie_fread (f);
+                    fclose (f);
+                }
                 free (filepath);
             }
             free (basedir);
         }
+        if (!dict_trie)
+            dict_trie = trie_new_from_file (DICT_DIR "/" DICT_NAME ".tri");
 #else
         dict_trie = trie_new_from_file (DICT_DIR "/" DICT_NAME ".tri");
 #endif
