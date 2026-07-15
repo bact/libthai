@@ -116,12 +116,62 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     return TRUE;
 }
 
+/* Reverse search for needle in the first n wchar_t of haystack; NULL if absent. */
+static const wchar_t *
+wmemrchr_bound (const wchar_t *haystack, wchar_t needle, size_t n)
+{
+    const wchar_t *p;
+    for (p = haystack + n - 1; p >= haystack; --p) {
+        if (*p == needle)
+            return p;
+    }
+    return NULL;
+}
+
+/* Install dir = parent of nearest "bin"/"lib" ancestor, else path's own dir.
+ * C:\Program Files\App\bin\libthai.dll -> C:\Program Files\App
+ * C:\Program Files\App\libthai.dll     -> C:\Program Files\App
+ */
+static wchar_t *
+win_find_inst_dir (const wchar_t *filepath)
+{
+    size_t n = wcslen (filepath);
+    const wchar_t *base_end = NULL;
+    size_t len;
+    wchar_t *result;
+
+    for (;;) {
+        const wchar_t *p = wmemrchr_bound (filepath, L'\\', n);
+        if (!p)
+            break;
+        if (_wcsnicmp (p + 1, L"bin\\", 4) == 0 ||
+            _wcsnicmp (p + 1, L"lib\\", 4) == 0) {
+            base_end = p;
+            break;
+        }
+        n = (size_t) (p - filepath);
+    }
+
+    if (!base_end) {
+        const wchar_t *p = wcsrchr (filepath, L'\\');
+        base_end = p ? p : filepath;
+    }
+
+    len = (size_t) (base_end - filepath);
+    result = (wchar_t *) malloc ((len + 1) * sizeof (wchar_t));
+    if (!result)
+        return NULL;
+    wmemcpy (result, filepath, len);
+    result[len] = L'\0';
+    return result;
+}
+
 wchar_t *
 win_inst_dir (void)
 {
     /* Windows stores filenames natively as UTF-16 */
     wchar_t *path;
-    wchar_t *seg_end, *found;
+    wchar_t *dir;
     DWORD len;
 
     if (!libthai_dll)
@@ -137,42 +187,9 @@ win_inst_dir (void)
         return NULL;
     }
 
-    /* Directory of the DLL */
-    {
-        wchar_t *p = wcsrchr (path, L'\\');
-        if (p)
-            *p = L'\0';
-    }
-
-    /* Find nearest "bin"/"lib" dir at or above the DLL;
-     * installdir is its parent, else the DLL's own directory.
-     * C:\Program Files\App\bin\libthai.dll -> C:\Program Files\App
-     * C:\Program Files\App\libthai.dll     -> C:\Program Files\App
-     */
-    found = NULL;
-    seg_end = path + wcslen (path);
-    while (seg_end > path) {
-        wchar_t *seg_start = seg_end;
-        size_t seg_len;
-
-        while (seg_start > path && seg_start[-1] != L'\\')
-            seg_start--;
-
-        seg_len = (size_t) (seg_end - seg_start);
-        if (seg_start > path && seg_len == 3 &&
-            (_wcsnicmp (seg_start, L"bin", 3) == 0 ||
-             _wcsnicmp (seg_start, L"lib", 3) == 0)) {
-            found = seg_start - 1;
-            break;
-        }
-
-        seg_end = (seg_start > path) ? seg_start - 1 : path;
-    }
-
-    if (found)
-        *found = L'\0';
-
-    return path;
+    dir = win_find_inst_dir (path);
+    free (path);
+    return dir;
 }
 #endif /* _WIN32 && !__CYGWIN__ */
 
