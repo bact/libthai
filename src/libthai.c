@@ -119,6 +119,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 wchar_t *
 th_get_win32_installdir_w (void)
 {
+    /* Windows stores filenames natively as UTF-16 */
     wchar_t *path;
     wchar_t *seg_end, *found;
     DWORD len;
@@ -143,8 +144,11 @@ th_get_win32_installdir_w (void)
             *p = L'\0';
     }
 
-    /* Walk up to the nearest "bin"/"lib" ancestor;
-     * fall back to the DLL's own directory if none found. */
+    /* Find nearest "bin"/"lib" dir at or above the DLL;
+     * installdir is its parent, else the DLL's own directory.
+     * C:\Program Files\App\bin\libthai.dll -> C:\Program Files\App
+     * C:\Program Files\App\libthai.dll     -> C:\Program Files\App
+     */
     found = NULL;
     seg_end = path + wcslen (path);
     while (seg_end > path) {
