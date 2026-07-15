@@ -72,7 +72,7 @@ brk_load_default_dict ()
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {
 #if defined (_WIN32) && !defined (__CYGWIN__)
-        wchar_t *basedir = th_get_win32_installdir_w ();
+        wchar_t *basedir = win_inst_dir ();
         if (basedir) {
             static const wchar_t sharedir[] =
                 L"share\\libthai\\" WIDEN (DICT_NAME) L".tri";

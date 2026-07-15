@@ -117,7 +117,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 }
 
 wchar_t *
-th_get_win32_installdir_w (void)
+win_inst_dir (void)
 {
     /* Windows stores filenames natively as UTF-16 */
     wchar_t *path;

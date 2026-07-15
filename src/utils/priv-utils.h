@@ -40,7 +40,7 @@
 
 /* Absolute directory of the loaded libthai DLL, or NULL on failure.
  * Caller free()s the wide string. */
-wchar_t * th_get_win32_installdir_w (void);
+wchar_t * win_inst_dir (void);
 #endif
 
 #endif  /* __PRIV_UTILS_H */
