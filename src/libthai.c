@@ -97,30 +97,31 @@
 #include <stdlib.h>
 #include <wchar.h>
 
-static HMODULE libthai_dll = NULL;
-
 void _libthai_on_unload (void);
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-    switch (fdwReason) {
-        case DLL_PROCESS_ATTACH:
-            libthai_dll = hinstDLL;
-            break;
-        case DLL_PROCESS_DETACH:
+    (void) hinstDLL;
+    if (fdwReason == DLL_PROCESS_DETACH) {
+        /* Skip cleanup if the whole process is exiting (lpvReserved != NULL);
+         * other DLLs may already be gone */
+        if (!lpvReserved)
             _libthai_on_unload ();
-            break;
     }
     return TRUE;
 }
 
-/* Reverse search for needle in the first n wchar_t of haystack; NULL if absent. */
+/* Reverse search for needle in the first n wchar_t of haystack;
+ * NULL if absent.
+ */
 static const wchar_t *
 wmemrchr_bound (const wchar_t *haystack, wchar_t needle, size_t n)
 {
     const wchar_t *p;
+    if (n == 0)
+        return NULL;
     for (p = haystack + n - 1; p >= haystack; --p) {
         if (*p == needle)
             return p;
@@ -128,7 +129,16 @@ wmemrchr_bound (const wchar_t *haystack, wchar_t needle, size_t n)
     return NULL;
 }
 
-/* Install dir = parent of nearest "bin"/"lib" ancestor, else path's own dir.
+/* True if s starts with marker (case-insensitively) followed by '\\'. */
+static int
+segment_matches (const wchar_t *s, const wchar_t *marker)
+{
+    size_t len = wcslen (marker);
+    return _wcsnicmp (s, marker, len) == 0 && s[len] == L'\\';
+}
+
+/* Install dir = parent of nearest "bin"/"lib"/"bin64"/"lib64" ancestor,
+ * else path's own dir.
  * C:\Program Files\App\bin\libthai.dll -> C:\Program Files\App
  * C:\Program Files\App\libthai.dll     -> C:\Program Files\App
  */
@@ -140,13 +150,15 @@ win_find_inst_dir (const wchar_t *filepath)
     size_t len;
     wchar_t *result;
 
-    /* Scan segments right-to-left for \bin\ or \lib\ */
+    /* Scan segments right-to-left for a known install-layout marker dir */
     for (;;) {
         const wchar_t *p = wmemrchr_bound (filepath, L'\\', n);
         if (!p)
             break;
-        if (_wcsnicmp (p + 1, L"bin\\", 4) == 0 ||
-            _wcsnicmp (p + 1, L"lib\\", 4) == 0) {
+        if (segment_matches (p + 1, L"bin") ||
+            segment_matches (p + 1, L"lib") ||
+            segment_matches (p + 1, L"bin64") ||
+            segment_matches (p + 1, L"lib64")) {
             base_end = p;
             break;
         }
@@ -171,31 +183,40 @@ win_find_inst_dir (const wchar_t *filepath)
 wchar_t *
 win_inst_dir (void)
 {
-    /* Windows stores filenames natively as UTF-16 */
+    /* Windows stores paths natively as UTF-16 */
+    /* Cached: the install dir is invariant for the process's life. */
+    static wchar_t *cached_dir = NULL;
+    static int computed = 0;
+    HMODULE hmod = NULL;
     wchar_t *path;
-    wchar_t *dir;
     DWORD len;
 
-    if (!libthai_dll)
+    if (computed)
+        return cached_dir;
+    computed = 1;
+
+    if (!GetModuleHandleExW (GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                              (LPCWSTR) &win_inst_dir, &hmod))
         return NULL;
 
     path = (wchar_t *) malloc (MAX_PATH * sizeof (wchar_t));
     if (!path)
         return NULL;
 
-    len = GetModuleFileNameW (libthai_dll, path, MAX_PATH);
+    len = GetModuleFileNameW (hmod, path, MAX_PATH);
     if (len == 0 || len >= MAX_PATH) {
         free (path);
         return NULL;
     }
 
-    dir = win_find_inst_dir (path);
+    cached_dir = win_find_inst_dir (path);
     free (path);
-    return dir;
+    return cached_dir;
 }
 #endif /* _WIN32 && !__CYGWIN__ */
 
-#if defined (__GNUC__) || defined (__clang__)
+#if (defined (__GNUC__) || defined (__clang__)) && \
+    !(defined (_WIN32) && !defined (__CYGWIN__))
 __attribute__ ((destructor))
 #endif
 void

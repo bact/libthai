@@ -39,7 +39,8 @@
 #include <wchar.h>
 
 /* Absolute directory of the loaded libthai DLL, or NULL on failure.
- * Caller free()s the wide string. */
+ * The returned pointer is cached and owned by the library;
+ * valid for the process's lifetime, the caller must not free it. */
 wchar_t * win_inst_dir (void);
 #endif
 

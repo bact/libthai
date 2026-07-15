@@ -35,7 +35,7 @@
 
 #if defined (_WIN32) && !defined (__CYGWIN__)
 #include <wchar.h>
-/* turns a narrow string-literal macro into a wide one, e.g. WIDEN (DICT_NAME) */
+/* turns a narrow string-literal macro into a wide one */
 #define WIDEN_(s) L ## s
 #define WIDEN(s) WIDEN_(s)
 #endif
@@ -52,6 +52,23 @@ full_path (const char *path, const char *name, const char *ext)
     }
     return full_path_buff;
 }
+
+#if defined (_WIN32) && !defined (__CYGWIN__)
+static wchar_t *
+wfull_path (const wchar_t *path, const wchar_t *name, const wchar_t *ext)
+{
+    size_t full_size = wcslen (path) + wcslen (name) + wcslen (ext) + 2;
+    wchar_t *full_path_buff = (wchar_t *) malloc (full_size * sizeof (wchar_t));
+    if (LIKELY (full_path_buff)) {
+        /* Use wcscat; avoid swprintf inconsistency between Windows versions */
+        wcscpy (full_path_buff, path);
+        wcscat (full_path_buff, L"\\");
+        wcscat (full_path_buff, name);
+        wcscat (full_path_buff, ext);
+    }
+    return full_path_buff;
+}
+#endif
 
 Trie *
 brk_load_default_dict ()
@@ -72,23 +89,21 @@ brk_load_default_dict ()
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {
 #if defined (_WIN32) && !defined (__CYGWIN__)
-        wchar_t *basedir = win_inst_dir ();
-        if (basedir) {
-            static const wchar_t sharedir[] =
-                L"share\\libthai\\" WIDEN (DICT_NAME) L".tri";
-            size_t total_len = wcslen (basedir) + 1 /* '\\' */
-                              + (sizeof (sharedir) / sizeof (wchar_t));
-            wchar_t *filepath = (wchar_t *) malloc (total_len * sizeof (wchar_t));
-            if (filepath) {
-                swprintf (filepath, total_len, L"%ls\\%ls", basedir, sharedir);
-                FILE *f = _wfopen (filepath, L"rb");
-                if (f) {
-                    dict_trie = trie_fread (f);
-                    fclose (f);
+        {
+            wchar_t *basedir = win_inst_dir ();
+            if (basedir) {
+                static const wchar_t sharename[] =
+                    L"share\\libthai\\" WIDEN (DICT_NAME);
+                wchar_t *filepath = wfull_path (basedir, sharename, L".tri");
+                if (filepath) {
+                    FILE *f = _wfopen (filepath, L"rb");
+                    if (f) {
+                        dict_trie = trie_fread (f);
+                        fclose (f);
+                    }
+                    free (filepath);
                 }
-                free (filepath);
             }
-            free (basedir);
         }
         if (!dict_trie)
             dict_trie = trie_new_from_file (DICT_DIR "/" DICT_NAME ".tri");
