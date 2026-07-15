@@ -140,6 +140,7 @@ win_find_inst_dir (const wchar_t *filepath)
     size_t len;
     wchar_t *result;
 
+    /* Scan segments right-to-left for \bin\ or \lib\ */
     for (;;) {
         const wchar_t *p = wmemrchr_bound (filepath, L'\\', n);
         if (!p)
@@ -152,6 +153,7 @@ win_find_inst_dir (const wchar_t *filepath)
         n = (size_t) (p - filepath);
     }
 
+    /* Not found: fall back to the DLL's own directory */
     if (!base_end) {
         const wchar_t *p = wcsrchr (filepath, L'\\');
         base_end = p ? p : filepath;
