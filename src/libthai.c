@@ -89,11 +89,19 @@
  */
 
 #include "thbrk/thbrk-priv.h"
+#include "utils/win-utils.h"
 
-__attribute__ ((destructor)) void
+#if (defined (__GNUC__) || defined (__clang__)) && \
+    !(defined (_WIN32) && !defined (__CYGWIN__))
+__attribute__ ((destructor))
+#endif
+void
 _libthai_on_unload ()
 {
     brk_free_shared_brk ();
+#if defined (_WIN32) && !defined (__CYGWIN__)
+    win_inst_dir_free ();
+#endif
 }
 
 /*

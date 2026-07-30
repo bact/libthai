@@ -19,7 +19,7 @@
  */
 
 /*
- * thbrk-utils.h - Common utilities for thbrk module
+ * priv-utils.h - Common private utilities
  * Created: 2015-05-06
  * Author:  Theppitak Karoonboonyanan <theppitak@gmail.com>
  */
@@ -40,4 +40,3 @@
 /*
 vi:ts=4:ai:expandtab
 */
-

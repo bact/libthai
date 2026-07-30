@@ -1,7 +1,7 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /*
  * libthai - Thai Language Support Library
- * Copyright (C) 2001  Theppitak Karoonboonyanan <theppitak@gmail.com>
+ * Copyright (C) 2001-2026 Theppitak Karoonboonyanan <theppitak@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,14 @@
 #include "utils/priv-utils.h"
 #include "brk-common.h"
 
+#if defined (_WIN32) && !defined (__CYGWIN__)
+#include <wchar.h>
+#include "utils/win-utils.h"
+/* turns a narrow string-literal macro into a wide one */
+#define WIDEN_(s) L ## s
+#define WIDEN(s) WIDEN_(s)
+#endif
+
 #define DICT_NAME   "thbrk"
 
 static char *
@@ -45,6 +53,23 @@ full_path (const char *path, const char *name, const char *ext)
     }
     return full_path_buff;
 }
+
+#if defined (_WIN32) && !defined (__CYGWIN__)
+static wchar_t *
+wfull_path (const wchar_t *path, const wchar_t *name, const wchar_t *ext)
+{
+    size_t full_size = wcslen (path) + wcslen (name) + wcslen (ext) + 2;
+    wchar_t *full_path_buff = (wchar_t *) malloc (full_size * sizeof (wchar_t));
+    if (LIKELY (full_path_buff)) {
+        /* Use wcscat; avoid swprintf inconsistency between Windows versions */
+        wcscpy (full_path_buff, path);
+        wcscat (full_path_buff, L"\\");
+        wcscat (full_path_buff, name);
+        wcscat (full_path_buff, ext);
+    }
+    return full_path_buff;
+}
+#endif
 
 Trie *
 brk_load_default_dict ()
@@ -61,6 +86,26 @@ brk_load_default_dict ()
             free (path);
         }
     }
+
+#if defined (_WIN32) && !defined (__CYGWIN__)
+    /* Try to find dict under the base dir used to install the DLL */
+    if (!dict_trie) {
+        wchar_t *basedir = win_inst_dir ();
+        if (basedir) {
+            static const wchar_t sharename[] =
+                L"share\\libthai\\" WIDEN (DICT_NAME);
+            wchar_t *filepath = wfull_path (basedir, sharename, L".tri");
+            if (filepath) {
+                FILE *f = _wfopen (filepath, L"rb");
+                if (f) {
+                    dict_trie = trie_fread (f);
+                    fclose (f);
+                }
+                free (filepath);
+            }
+        }
+    }
+#endif
 
     /* Then, fall back to default DICT_DIR macro */
     if (!dict_trie) {

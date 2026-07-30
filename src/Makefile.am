@@ -20,7 +20,8 @@ libthai_sublibs = \
 	$(top_builddir)/src/thwchar/libthwchar.la \
 	$(top_builddir)/src/thwctype/libthwctype.la \
 	$(top_builddir)/src/thwstr/libthwstr.la \
-	$(top_builddir)/src/thwbrk/libthwbrk.la 
+	$(top_builddir)/src/thwbrk/libthwbrk.la \
+	$(top_builddir)/src/utils/libutils.la
 
 if LD_HAS_VERSION_SCRIPT
 EXPORTS_FLAGS = -Wl,-version-script -Wl,$(srcdir)/libthai.map
