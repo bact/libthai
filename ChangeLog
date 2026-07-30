@@ -1,3 +1,30 @@
+2026-07-30  Arthit Suriyawongkul  <arthit@gmail.com>
+
+	Add dynamic path resolution for Windows (PR #36)
+
+	* src/utils/Makefile.am,
+	  +src/utils/win-utils.h, +src/utils/win-utils.c:
+	  - Add Windows-specific utility functions.
+	  - Build it as sublibrary libutils.la.
+	* src/Makefile.am:
+	  - Add libutils.la to $(libthai_sublibs).
+	* src/libthai.c (_libthai_on_unload):
+	  - Do not insert __attribute__ on Windows.
+	  - Call win_inst_dir_free() on unload.
+	* src/brk-common.c (brk_load_default_dict):
+	  - Insert a step for Windows to look for dictionary file under
+	    the base installation dir of DLL.
+	* src/utils/priv-utils.h:
+	  - Minor correction in the header comment.
+
+	To fix https://github.com/tlwg/libthai/issues/7
+
+	Partly based on https://github.com/tlwg/libthai/pull/12
+
+	Signed-off-by: Arthit Suriyawongkul <arthit@gmail.com>
+	Co-authored-by: fanc999 <9366079+fanc999@users.noreply.github.com>
+	Co-authored-by: Theppitak Karoonboonyanan <631551+thep@users.noreply.github.com>
+
 2026-07-13  Arthit Suriyawongkul  <arthit@gmail.com>
 
 	Fix infinite try when dict is missing
